@@ -1,6 +1,8 @@
 # fuel-fraud
 Sample system that checks Shell fuel-card purchases against Geotab telematics. Read-only against both APIs.
 
+Scenario demo page: https://amsheer.github.io/fuel-fraud/ (source: `docs/index.html`, static, no data or keys).
+
 ## Run
 1. Copy `.env.example` to `.env` and fill in the Shell and Geotab values (never commit `.env`).
 2. `node app.js` (Node 18 or newer), then open http://localhost:8800 and press **Check purchases**.
