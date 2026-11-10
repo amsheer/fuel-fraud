@@ -1,0 +1,27 @@
+{
+  "note": "SAMPLE partner rules for FleetYes-SAMPLE. Made-up values, both switched off because this fleet fuels across the UK.",
+  "partner_id": "SAMPLE-HAULAGE",
+  "rule_version": 1,
+  "city_boundary": {
+    "enabled": false,
+    "centre": {
+      "lat": 52.713,
+      "lon": -1.345
+    },
+    "radius_km": 1
+  },
+  "tolerance": {
+    "min_litres": 50,
+    "percent": 10
+  },
+  "consumption": {
+    "enabled": true,
+    "max_l_per_100km": 60
+  },
+  "tank_litres": {},
+  "plate_overrides": {},
+  "approved_stations": {
+    "enabled": false,
+    "site_codes": []
+  }
+}
