@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FleetYes | Scenario solution map</title>
+<style>
+:root{--ink:#18343d;--muted:#687a80;--line:#dfe7e8;--bg:#f3f6f6;--teal:#087f79;--teal-pale:#e4f4ef;--orange:#ed8b46;--navy:#102c35;--red:#c65342;--redp:#fbe9e5;--amber:#9a661d;--amberp:#fbf0dc;--green:#2b7a52;--greenp:#e3f3ea;--card:#fff;--radius:15px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+.topbar{height:64px;background:var(--navy);color:#fff;display:flex;align-items:center;gap:20px;padding:0 28px}
+.brand{font-size:22px;font-weight:750;letter-spacing:-1px}.brand b{color:#ffa865}
+.sub{color:#a9bcc2;font-size:13px}
+.pill{margin-left:auto;border:1px solid #486068;color:#d0dddd;padding:5px 10px;border-radius:5px;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;font-weight:650}
+.layout{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:calc(100vh - 64px)}
+aside{background:#fff;border-right:1px solid var(--line);padding:24px 14px}
+.eyebrow{font-size:10px;font-weight:750;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);padding:0 8px 10px}
+.sc{display:flex;gap:10px;width:100%;text-align:left;border:1px solid transparent;background:transparent;padding:11px 9px;border-radius:9px;color:var(--ink);font:inherit;cursor:pointer;margin-bottom:5px}
+.sc:hover{background:#f1f6f5}.sc.on{background:#eaf5f1;border-color:#c2e1d6}
+.sc .n{color:#889b9e;font:11px ui-monospace,monospace;margin-top:3px}.sc.on .n{color:var(--teal)}
+.sc strong{display:block;font-size:13px}.sc span.d{display:block;color:var(--muted);font-size:12px}
+.sc:focus-visible,.tab:focus-visible{outline:3px solid #ee994e}
+main{padding:28px 32px 56px;max-width:980px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:0 7px 24px #153f4810;margin-bottom:16px}
+.pre{font-size:12.5px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pre code{background:#eef3f3;padding:1px 6px;border-radius:5px;font:12px ui-monospace,monospace;color:var(--ink)}
+h1{margin:0 0 4px;font-size:22px;letter-spacing:-.4px}
+.demo{color:var(--muted);font-size:13px;margin-bottom:10px}
+.chip{display:inline-block;font-size:12px;font-weight:650;padding:3px 11px;border-radius:99px;vertical-align:3px;margin-left:8px}
+.ok{background:var(--greenp);color:var(--green)}.bad{background:var(--redp);color:var(--red)}.wait{background:var(--amberp);color:var(--amber)}
+h2{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.flow{position:relative;margin:0;padding:0;list-style:none}
+.step{position:relative;padding:0 0 18px 46px}
+.step:before{content:"";position:absolute;left:15px;top:30px;bottom:0;border-left:2px solid var(--line)}
+.step:last-child:before{display:none}
+.step .no{position:absolute;left:0;top:0;width:32px;height:32px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:650;font-size:13px}
+.step.build .no{background:var(--red)}
+.step b{display:block;font-size:14.5px}
+.step p{margin:2px 0 6px;color:var(--muted)}
+.api{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#fafcfc;font-size:12.5px}
+.api .h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.api .m{font:650 11px ui-monospace,monospace;background:#e2ecec;border-radius:5px;padding:1px 6px}
+.api .u{font:12px ui-monospace,monospace;word-break:break-all}
+.tag{font-size:11px;border-radius:99px;padding:0 8px;border:1px solid var(--line);color:var(--muted)}
+.tag.t{color:var(--green);border-color:#b9dcc8}.tag.b{color:var(--red);border-color:#efc3bb}
+.api dl{margin:6px 0 0;display:grid;grid-template-columns:54px 1fr;gap:2px 8px}
+.api dt{color:var(--muted)}.api dd{margin:0;font:12px ui-monospace,monospace;word-break:break-word}
+.rule{background:var(--teal-pale);border:1px solid #c2e1d6}
+.live{background:var(--amberp);border:1px solid #efd9a8}
+.ex{background:#fff;border:1px solid #d5dfe0}.ex pre{background:#0f2a33;color:#e6f1f2;padding:12px 14px;border-radius:8px;overflow:auto;font:12px/1.5 ui-monospace,monospace;margin:8px 0}.ex ol{margin:6px 0 0;padding-left:20px}.ex .tag{font-size:12px;color:#687a80}
+.rule p,.live p{margin:0}.rule h2,.live h2{margin-bottom:6px}
+.foot{font-size:12.5px;color:var(--muted)}
+.tabs{display:flex;gap:6px;margin:0 0 16px;border-bottom:1px solid var(--line)}
+.tab{border:0;background:none;font:inherit;font-weight:650;color:var(--muted);padding:10px 16px;cursor:pointer;position:relative}
+.tab.on{color:var(--teal)}.tab.on:after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:3px;background:#f2a365;border-radius:3px}
+.chart svg{width:100%;height:auto;display:block}
+.legend{font-size:12.5px;color:var(--muted);margin-top:8px}
+@media(max-width:820px){.layout{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line)}main{padding:20px 16px}}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="brand">Fleet<b>Yes</b></div><div class="sub">Fuel intelligence · scenario solution map</div><a href="./" style="margin-left:auto;color:#ffa865;font-weight:650;text-decoration:none;font-size:13px">&larr; Dashboard</a><div class="pill" style="margin-left:0">Live API mapping</div></header>
+<div class="layout">
+<aside><div class="eyebrow">Explore the scenarios</div><div id="list" role="tablist"></div></aside>
+<main id="main"></main>
+</div>
+<script>
+const API={
+ shell:{tag:'Shell',m:'POST',u:'api.shell.com/transaction-data/v1/multipayerspricedtransactions',st:'t',send:'Page, PageSize, Filters.Accounts[PayerId, PayerNumber], FromDate, ToDate, FuelOnly',get:'Quantity, SiteCode, Location.Latitude and Longitude, TransactionDate, TransactionTime, UTCOffset, VehicleRegistration, CardId'},
+ device:{tag:'Geotab',m:'POST',u:'my.geotab.com/apiv1 · Get Device',st:'t',send:'typeName Device',get:'id, name (ends with the plate), vehicleIdentificationNumber'},
+ gps:{tag:'Geotab',m:'POST',u:'my.geotab.com/apiv1 · Get LogRecord',st:'t',send:'typeName LogRecord, search.deviceSearch.id, fromDate, toDate (purchase time ± 45 min)',get:'latitude, longitude, dateTime'},
+ gpsall:{tag:'Geotab',m:'POST',u:'my.geotab.com/apiv1 · Get LogRecord (each device)',st:'t',send:'the same call for every device, not only the plate match',get:'latitude, longitude, dateTime per device'},
+ fill:{tag:'Geotab',m:'POST',u:'my.geotab.com/apiv1 · Get FillUp',st:'t',send:'typeName FillUp, search.deviceSearch.id, fromDate, toDate',get:'tankLevelExtrema min and max % (level before and after), dateTime, location, distance. Litres = level rise × tank size; the volume field is fuel burnt, not fuel added'},
+ fuel:{tag:'Geotab',m:'POST',u:'my.geotab.com/apiv1 · Get StatusData',st:'t',send:'typeName StatusData, diagnosticSearch.id DiagnosticFuelLevelId',get:'data (percent), dateTime. Litres need tank size from the vehicle master'},
+ rules:{tag:'To build',m:'GET',u:'{{url}}/api/v1/partner-rules (proposed)',st:'b',send:'partner_id, rule_type',get:'city_boundary, approved_site_codes, rule_version, effective_from, effective_to'},
+ engine:{tag:'To build',m:'POST',u:'{{url}}/api/v1/fuel-assessments (proposed)',st:'b',send:'transaction_id',get:'result, difference_litres, tolerance_litres, rule_version, evidence'}
+};
+const S=[
+{n:'One vehicle, one fill',d:'A supported match',out:['ok','Supported match'],demo:'300 L purchased · 290 L gained in truck A',
+ sum:'One participating truck is at the station and its tank gained about the litres bought. Nothing to flag; the evidence is stored with the match.',
+ steps:[['shell','Receive the purchase','Read the litres, station, coordinates and the plate typed at the pump.'],['device','Match the plate to a vehicle','Normalise the plate (uppercase, no spaces), then find the device whose name ends with it.'],['gps','Confirm the truck is at the station','Nearest GPS point to the station coordinates inside the purchase window.'],['fill','Read the fill','Take the fill-up closest to the payment time.'],['engine','Compare litres','Shell litres minus fill litres against the tolerance.']],
+ rule:'Difference = 300 − 290 = 10 L. Tolerance = the greater of 15 L or 5% of 300 L (15 L) = 15 L. 10 is not above 15, so there is no mismatch.',
+ live:''},
+{n:'Several vehicles, one fill',d:'Presence is not refuelling',out:['ok','Supported match'],demo:'300 L purchased · trucks A, B, C present · only A gained fuel',
+ sum:'Three trucks are near the station, but only one tank rose. Count only vehicles whose fuel gain is above 10 L, so presence alone never claims the purchase.',
+ steps:[['shell','Receive the purchase','Litres, station and plate typed at the pump.'],['gpsall','Find every vehicle near the station','Run the GPS check for all devices. This is the candidate list.'],['fill','Read fills for each candidate','Keep only vehicles with a fill above 10 L.'],['engine','Compare litres','Sum the gains of the filling vehicles and compare with the purchase.']],
+ rule:'Gains: A 290 L, B 0, C 0. Observed = 290 L. 300 − 290 = 10 L, within the 15 L tolerance, so truck A is credited.',
+ live:''},
+{n:'Simultaneous purchases',d:'Two cards, two quantities',out:['ok','Two supported matches'],demo:'300 L and 180 L purchased · trucks gained 290 L and 175 L',
+ sum:'Two drivers pay separately minutes apart. Distinct quantities let each purchase be paired with a different truck. If the quantities are too close, the pairing is ambiguous.',
+ steps:[['shell','Receive both purchases','Same station, minutes apart, different cards and plates.'],['device','Match each plate','One device per purchase.'],['fill','Read each truck’s fill','One fill-up per truck.'],['engine','Try the pairings','Pair each purchase with a fill within tolerance. Exactly one valid pairing gives a match.']],
+ rule:'Total 480 L vs 465 L, difference 15 L, within 24 L. Pairs: 300↔290 (10 L) and 180↔175 (5 L). Only one pairing fits, so both are supported. Two fitting pairings give Ambiguous.',
+ live:''},
+{n:'Fuel quantity exception',d:'Truck and cans',out:['bad','Quantity exception'],demo:'300 L purchased · 180 L in the truck · 120 L unexplained',
+ sum:'The card paid for far more fuel than reached the tank. The extra litres could be cans or another vehicle. The system flags the gap from telemetry; it does not see the cans.',
+ steps:[['shell','Receive the purchase','Litres and plate.'],['device','Match the plate','Find the truck.'],['gps','Confirm presence','The truck was at the station.'],['fill','Read the fill','Volume of the fill closest to the payment.'],['engine','Compare litres','The difference is larger than the tolerance, so raise a quantity exception.']],
+ rule:'300 − 180 = 120 L, far above the 15 L tolerance. 120 L is unexplained, so the result is a quantity exception for review.',
+ live:''},
+{n:'Incomplete telemetry',d:'Missing evidence is not misuse',out:['wait','Insufficient data'],demo:'300 L purchased · truck A present but its readings are missing',
+ sum:'The truck is at the station, but no fuel data came back, so the litres received cannot be totalled. Hold the case as pending, then record insufficient data. Do not infer diversion.',
+ steps:[['shell','Receive the purchase','Litres and plate.'],['device','Match the plate','Find the truck.'],['gps','Confirm presence','Truck at the station.'],['fill','Read the fill','Returns nothing for this vehicle.'],['fuel','Try raw fuel level','If it is also empty, hold the case.'],['engine','Mark pending, then insufficient data','Keep pending until the review time (demo: 14:30).']],
+ rule:'Readings missing for a vehicle at the station, so the total cannot be computed. Result: Insufficient data. Do not flag misuse.',
+ live:''},
+{n:'No participating vehicle',d:'Private car on an account card',out:['bad','Suspected unauthorised purchase'],demo:'45 L purchased · no fleet vehicle at the station',
+ sum:'Nobody from the fleet was at the station when the card was used. Flag it straight away. No fuel readings are needed.',
+ steps:[['shell','Receive the purchase','Litres, station and plate typed at the pump.'],['device','Look up the plate','No device with that plate, or the plate is free text.'],['gpsall','Check for any fleet vehicle near the station','None found within the window.'],['engine','Flag at once','Suspected unauthorised purchase. No fuel call needed.']],
+ rule:'No participating vehicle in the geofence. Raise a suspected unauthorised purchase for the reviewer to check card, membership and use.',
+ live:''},
+{n:'Outside approved city',d:'Last-mile van crosses the boundary',out:['bad','Policy exception'],demo:'45 L purchased · 44 L gained · station outside Demo City',
+ sum:'A real fill does not make the location permitted. The station is checked against the partner’s city boundary at purchase time, before any fuel check.',
+ steps:[['shell','Receive the purchase','Read the station coordinates.'],['rules','Load the partner rule','City boundary and rule version in force on that date.'],['engine','Test the point against the boundary','Outside the boundary, so raise a policy exception at once.'],['fill','Optional: read the fill','Fuel evidence is added later; the exception stays.']],
+ rule:'Station point outside city_boundary gives a policy exception. The 44 L fuel gain does not clear it.',
+ live:'',
+ ex:{say:'The customer tells FleetYes once: “our vans may only fuel within 15 km of the Glasgow depot”. FleetYes saves that as a rule. Every purchase is then checked against it.',json:{partner_id:'SAMPLE-HAULAGE',rule_type:'city_boundary',rule_version:3,effective_from:'2026-01-01',effective_to:null,city_boundary:{type:'circle',centre:{lat:55.8642,lon:-4.2518},radius_km:15}},case:['Shell purchase: SiteName “Example Station”, Latitude 56.10, Longitude -3.95, 45 L.','FleetYes loads the rule above and measures the distance from the depot: about 32 km.','32 km is more than 15 km, so the result is Policy exception. The fuel check is not needed to decide this.']}},
+{n:'Unapproved station',d:'Inside the city, not on the list',out:['bad','Policy exception'],demo:'45 L purchased · 44 L gained · station CITY-03, approved CITY-01 and CITY-02',
+ sum:'The van stays inside the city but fills at a station outside the partner’s approved list. The station code is compared with the list.',
+ steps:[['shell','Receive the purchase','Read the SiteCode.'],['rules','Load the partner rule','Approved Shell station codes and rule version.'],['engine','Check the code against the list','Not on the list, so raise a policy exception.'],['fill','Optional: read the fill','Does not change the result.']],
+ rule:'SiteCode not in approved_site_codes gives a policy exception.',
+ live:'',
+ ex:{say:'The customer gives FleetYes a short list of Shell stations their vans may use. FleetYes saves it as a rule and compares each purchase’s SiteCode with the list.',json:{partner_id:'SAMPLE-HAULAGE',rule_type:'approved_stations',rule_version:2,effective_from:'2026-01-01',effective_to:null,approved_site_codes:['1001','1002']},case:['Shell purchase: SiteCode 1003, SiteName “Example Station”, 45 L.','FleetYes loads the rule above. The list holds 1001 and 1002 only.','1003 is not on the list, so the result is Policy exception, even though the van stayed in the city and the fuel was really added.']}}
+];
+const FC=[
+{use:[0,1,2,3],q:'Litres within tolerance?',sub:'10 L is within 15 L',yes:['Supported match','ok','Evidence stored'],no:['Quantity exception','bad','Review the gap'],path:'yes'},
+{use:[0,1,2],q:'Litres within tolerance?',sub:'Only truck A gained over 10 L',yes:['Supported match','ok','Credit truck A only'],no:['Quantity exception','bad','Review the gap'],path:'yes'},
+{use:[0,1,2],q:'One valid card-to-truck pairing?',sub:'300 with 290 and 180 with 175',yes:['Two supported matches','ok','Each card paired'],no:['Ambiguous match','wait','Similar litres, review'],path:'yes'},
+{use:[0,1,2,3],q:'Litres within tolerance?',sub:'300 minus 180 = 120 L, above 15 L',yes:['Supported match','ok','Not this case'],no:['Quantity exception','bad','120 L unexplained'],path:'no'},
+{use:[0,1,2,3,4],q:'All fuel readings present?',sub:'None returned for truck A',yes:['Compare litres','n','Normal check'],no:['Insufficient data','wait','Hold pending, not misuse'],path:'no'},
+{use:[0,1,2],q:'Any fleet vehicle at the station?',sub:'None found in the window',yes:['Continue to fuel checks','n','Normal path'],no:['Unauthorised purchase','bad','Suspected, flag at once'],path:'no'},
+{use:[0,1],q:'Station inside the city boundary?',sub:'The station point is outside',yes:['Continue to vehicle checks','n','Normal path'],no:['Policy exception','bad','Flag at once'],path:'no'},
+{use:[0,1],q:'Station on the approved list?',sub:'CITY-03 is not on the list',yes:['Continue to vehicle checks','n','Normal path'],no:['Policy exception','bad','Flag at once'],path:'no'}
+];
+function chart(i){
+ const s=S[i],f=FC[i],x0=60,bw=560,bh=52,gap=26;
+ const T={ok:['#e3f3ea','#2b7a52','#1d5b3b'],bad:['#fbe9e5','#c65342','#8c2f22'],wait:['#fbf0dc','#9a661d','#6b440f'],n:['#f1f4f4','#9aabaf','#52656b']};
+ const SH={shell:'Shell · POST …/multipayerspricedtransactions',device:'Geotab · POST /apiv1 · Get Device',gps:'Geotab · POST /apiv1 · Get LogRecord',gpsall:'Geotab · POST /apiv1 · Get LogRecord, all devices',fill:'Geotab · POST /apiv1 · Get FillUp',fuel:'Geotab · POST /apiv1 · Get StatusData (fuel level)',rules:'To build · GET /api/v1/partner-rules',engine:'To build · POST /api/v1/fuel-assessments'};
+ let y=20,o='';
+ f.use.forEach((k,n)=>{const st=s.steps[k],b=API[st[0]].st==='b';
+  o+=`<rect x="${x0}" y="${y}" width="${bw}" height="${bh}" rx="9" fill="${b?'#fbe9e5':'#eaf5f1'}" stroke="${b?'#c65342':'#087f79'}"/><text x="${x0+16}" y="${y+21}" font-size="14" font-weight="650" fill="#18343d">${n+1}. ${esc(st[1])}</text><text x="${x0+16}" y="${y+40}" font-size="12" fill="#687a80">${esc(SH[st[0]])}</text><line x1="340" y1="${y+bh}" x2="340" y2="${y+bh+gap-2}" stroke="#7a8d92" stroke-width="1.5" marker-end="url(#ar)"/>`;
+  y+=bh+gap});
+ const eng=f.use.length&&API[s.steps[f.use[f.use.length-1]][0]]?'':'';
+ o+=`<polygon points="130,${y+32} 160,${y} 520,${y} 550,${y+32} 520,${y+64} 160,${y+64}" fill="#102c35"/><text x="340" y="${y+27}" text-anchor="middle" font-size="14" font-weight="650" fill="#fff">${esc(f.q)}</text><text x="340" y="${y+47}" text-anchor="middle" font-size="12" fill="#bcd0d4">${esc(f.sub)}</text>`;
+ y+=64;const y2=y+50;
+ [['yes',185,40,'Yes'],['no',495,370,'No']].forEach(([k,ax,bx,lab])=>{
+  const [l,t,sub]=f[k],c=T[t],on=f.path===k;
+  o+=`<line x1="${ax}" y1="${y}" x2="${ax}" y2="${y2-2}" stroke="#7a8d92" stroke-width="1.5" ${on?'':'stroke-dasharray="4 3"'} marker-end="url(#ar)"/><text x="${ax+8}" y="${y+25}" font-size="12" fill="#687a80">${lab}</text><g opacity="${on?1:.45}"><rect x="${bx}" y="${y2}" width="270" height="58" rx="9" fill="${c[0]}" stroke="${c[1]}" stroke-width="${on?2:1}" ${on?'':'stroke-dasharray="5 4"'}/><text x="${bx+135}" y="${y2+24}" text-anchor="middle" font-size="14" font-weight="650" fill="${c[2]}">${esc(l)}</text><text x="${bx+135}" y="${y2+44}" text-anchor="middle" font-size="12" fill="${c[2]}">${esc(sub)}</text></g>`});
+ const H=y2+58+24;
+ return `<svg viewBox="0 0 680 ${H}" role="img" aria-label="Flow chart for ${esc(s.n)}"><defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#7a8d92" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>${o}</svg>`;
+}
+const exCard=s=>s.ex?`<div class="card ex"><h2>Sample: the partner rule and one purchase</h2><p style="margin:0 0 4px">${esc(s.ex.say)}</p><div class="tag">Rule saved in FleetYes (made-up values, for illustration)</div><pre>${esc(JSON.stringify(s.ex.json,null,2))}</pre><div class="tag">What happens to one purchase</div><ol>${s.ex.case.map(c=>`<li>${esc(c)}</li>`).join('')}</ol></div>`:'';
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const list=document.getElementById('list'),main=document.getElementById('main');
+S.forEach((s,i)=>{const b=document.createElement('button');b.className='sc';b.setAttribute('role','tab');b.innerHTML=`<span class="n">0${i+1}</span><span><strong>${esc(s.n)}</strong><span class="d">${esc(s.d)}</span></span>`;b.onclick=()=>show(i);list.appendChild(b)});
+let tab='sol';
+function show(i){
+ cur=i;const s=S[i];try{history.replaceState(null,'','#'+(i+1)+(tab==='flow'?'/flow':''))}catch(e){}
+ [...list.children].forEach((b,k)=>{b.classList.toggle('on',k===i);b.setAttribute('aria-selected',k===i)});
+ main.innerHTML=`<div class="card pre"><b>Before any call:</b> Shell <code>POST api.shell.com/v2/oauth/token</code> (production, token lasts 899 s) · Geotab <code>POST my.geotab.com/apiv1</code> Authenticate (returns sessionId)</div>
+ <div class="card"><h1>${esc(s.n)}<span class="chip ${s.out[0]}">${esc(s.out[1])}</span></h1><div class="demo">Demo: ${esc(s.demo)}</div><p style="margin:0">${esc(s.sum)}</p></div>
+ <div class="tabs" role="tablist"><button class="tab ${tab==='sol'?'on':''}" role="tab" onclick="setTab('sol')">Solution</button><button class="tab ${tab==='flow'?'on':''}" role="tab" onclick="setTab('flow')">Flow chart</button></div>
+ ${tab==='flow'?`<div class="card chart"><h2>Flow chart: the path this scenario takes</h2>${chart(i)}<div class="legend">Solid colour is the path taken in this scenario; faded is the path not taken. Teal boxes are calls tested live; red boxes are still to build.</div></div><div class="card rule"><h2>How the mismatch is identified</h2><p>${esc(s.rule)}</p></div>`:`<div class="card"><h2>Solution flow with the endpoint behind each step</h2><ol class="flow">${s.steps.map((st,k)=>{const a=API[st[0]];return `<li class="step ${a.st==='b'?'build':''}"><span class="no">${k+1}</span><b>${esc(st[1])}</b><p>${esc(st[2])}</p><div class="api"><div class="h"><span class="tag ${a.st}">${a.tag}${a.st==='t'?' · tested':''}</span><span class="m">${a.m}</span><span class="u">${esc(a.u)}</span></div><dl><dt>Send</dt><dd>${esc(a.send)}</dd><dt>Get</dt><dd>${esc(a.get)}</dd></dl></div></li>`}).join('')}</ol></div>
+ <div class="card rule"><h2>How the mismatch is identified</h2><p>${esc(s.rule)}</p></div>
+ `}
+ ${exCard(s)}
+ <div class="foot">Tolerance (the greater of 15 L for trucks or 5 L for vans, or 5% of the purchase) is the demo’s illustrative value. Endpoints marked To build are proposed names.</div>`;
+}
+function setTab(t){tab=t;show(cur)}
+let cur=0;
+const hh=location.hash.slice(1).split('/'),h=parseInt(hh[0],10);if(hh[1]==='flow')tab='flow';show(h>=1&&h<=8?h-1:0);
+document.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){const cur=[...list.children].findIndex(b=>b.classList.contains('on'));const n=Math.min(7,Math.max(0,cur+(e.key==='ArrowDown'?1:-1)));if(n!==cur){e.preventDefault();show(n)}}});
+</script>
+</body>
+</html>
