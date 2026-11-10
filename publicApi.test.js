@@ -1,7 +1,7 @@
 // Run: node publicApi.test.js   (no network)
 const assert = require('assert'), { handle, cache } = require('./publicApi');
 const NOW = Date.UTC(2026, 10, 10);
-const fakeRun = async () => ({ rows: [{ id: 'T1', plate: 'DK75 TDX', vehicle: null, card: 1, siteCode: '1', site: 'S', reason: 'x', signals: [] }], repeats: [], counts: {} });
+const fakeRun = async () => ({ rows: [{ id: 'T1', plate: 'QX12 RSZ', vehicle: null, card: 1, siteCode: '1', site: 'S', reason: 'x', signals: [] }], repeats: [], counts: {} });
 const ok = { run: fakeRun, rules: {}, salt: 's', now: NOW };
 (async () => {
   assert.equal((await handle({ from: '20261001', to: '20261031' }, ok)).status, 200);
@@ -19,6 +19,6 @@ const ok = { run: fakeRun, rules: {}, salt: 's', now: NOW };
   assert.equal(r.status, 502); assert.ok(!JSON.stringify(r).includes('secret'));              // no upstream detail leaks
   assert.equal(cache.size, 0);                                                                // failure not cached
   const body = (await handle({ from: '20261001', to: '20261002' }, ok)).body;
-  assert.ok(!JSON.stringify(body).includes('DK75'));                                          // output is anonymised
+  assert.ok(!JSON.stringify(body).includes('QX12'));                                          // output is anonymised
   console.log('public api checks passed');
 })();
