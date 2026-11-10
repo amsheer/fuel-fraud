@@ -3,7 +3,7 @@ const fs = require('fs'), path = require('path'), crypto = require('crypto');
 
 // ---- config -------------------------------------------------------------
 const env = {};
-try { fs.readFileSync(path.join(__dirname, '.env'), 'utf8').split('\n').forEach(l => { const i = l.indexOf('='); if (i > 0) env[l.slice(0, i)] = l.slice(i + 1); }); } catch (e) {}
+try { fs.readFileSync(path.join(__dirname, '.env'), 'utf8').split(/\r?\n/).forEach(l => { const i = l.indexOf('='); if (i > 0) env[l.slice(0, i).trim()] = l.slice(i + 1).trim(); }); } catch (e) {}
 const need = k => { if (!env[k]) throw new Error('missing ' + k + ' in .env'); return env[k]; };
 const payer = () => ({ PayerId: +need('SHELL_PAYER_ID'), PayerNumber: need('SHELL_PAYER_NUMBER') }); // from Shell loggedinuser
 
