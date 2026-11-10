@@ -18,7 +18,7 @@ main{padding:24px;max-width:1200px;margin:0 auto}
 h2{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
 .bar{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
 label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
-input[type=text],input[type=number]{border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;color:var(--ink);width:130px}
+input[type=text],input[type=number],input[type=date]{border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;color:var(--ink);width:130px}
 button{font:inherit;border:1px solid var(--teal);background:var(--teal);color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600}
 button.ghost{background:#fff;color:var(--teal)}
 button:focus-visible,input:focus-visible,.chip:focus-visible,tr.r:focus-visible{outline:3px solid #ee994e}
@@ -52,8 +52,8 @@ tr.d td{background:#f8fbfa;font-size:13px}
   <div class="card">
     <h2>Period</h2>
     <div class="bar">
-      <label>From (YYYYMMDD)<input type="text" id="from" value="20261001" inputmode="numeric"></label>
-      <label>To (YYYYMMDD)<input type="text" id="to" value="20261109" inputmode="numeric"></label>
+      <label>From<input type="date" id="from" value="2026-10-01" style="width:150px"></label>
+      <label>To<input type="date" id="to" value="2026-11-09" style="width:150px"></label>
       <button id="go">Check purchases</button>
       <span class="note" id="status">Press the button. The first run takes about 25 seconds.</span>
     </div>
@@ -87,14 +87,14 @@ async function saveRules(){
 let DEMO=false;
 async function assess(){
   try{
-    const r=await fetch('/api/assess?from='+$('from').value+'&to='+$('to').value);
+    const r=await fetch('/api/assess?from='+$('from').value.replace(/-/g,'')+'&to='+$('to').value.replace(/-/g,''));
     if((r.headers.get('content-type')||'').includes('json')){const b=await r.json();if(!r.ok)throw new Error(b.error||('HTTP '+r.status));return b}
   }catch(e){if(!(e instanceof TypeError))throw e} // a real server error is shown; "no server here" falls through
   DEMO=true;return j('demo-data.json'); // no live server (for example GitHub Pages): show the anonymised sample
 }
 function showDemo(){
   $('demoCard').hidden=false;$('rulesCard').hidden=true;
-  $('from').value=data.range.from;$('to').value=data.range.to;$('from').disabled=$('to').disabled=true;$('go').hidden=true;
+  const iso=s=>s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);$('from').value=iso(data.range.from);$('to').value=iso(data.range.to);$('from').disabled=$('to').disabled=true;$('go').hidden=true;
   $('status').textContent='Anonymised sample data';
 }
 async function check(){
