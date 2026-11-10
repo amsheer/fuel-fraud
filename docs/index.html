@@ -72,6 +72,7 @@ tr.d td{background:#f8fbfa;font-size:13px}
   </div>
   <div class="card"><h2 id="tblTitle">Purchases</h2><div class="scroll"><table id="tbl"><thead><tr><th>When (UTC)</th><th>Plate typed</th><th>Vehicle in Geotab</th><th>Found by</th><th>Station</th><th class="num">Litres</th><th>Result</th></tr></thead><tbody></tbody></table></div></div>
 </main>
+<script src="config.js"></script>
 <script>
 const LABEL={suspect:'Suspected: vehicle elsewhere',partly:'Partly verified',supported:'Supported match',quantity:'Quantity exception',policy:'Policy exception',insufficient:'Insufficient data',unidentified:'Vehicle not identified',ambiguous:'Needs review'};
 const ORDER=['suspect','quantity','policy','ambiguous','partly','unidentified','insufficient','supported'];
@@ -85,23 +86,33 @@ async function saveRules(){
   return check();
 }
 let DEMO=false;
+const API=(window.FUEL_API||'').trim(); // public server (Firebase function). Empty = the local server, or the sample when there is none
 async function assess(){
+  const q='from='+$('from').value.replace(/-/g,'')+'&to='+$('to').value.replace(/-/g,'');
   try{
-    const r=await fetch('/api/assess?from='+$('from').value.replace(/-/g,'')+'&to='+$('to').value.replace(/-/g,''));
+    const r=await fetch(API?API+'?'+q:'/api/assess?'+q);
     if((r.headers.get('content-type')||'').includes('json')){const b=await r.json();if(!r.ok)throw new Error(b.error||('HTTP '+r.status));return b}
   }catch(e){if(!(e instanceof TypeError))throw e} // a real server error is shown; "no server here" falls through
-  DEMO=true;return j('demo-data.json'); // no live server (for example GitHub Pages): show the anonymised sample
+  DEMO=true;return j('demo-data.json'); // no live server reachable: show the anonymised sample
 }
 function showDemo(){
   $('demoCard').hidden=false;$('rulesCard').hidden=true;
+  if(API){$('status').textContent='The live server did not answer, so this is the saved sample run.';return}
   const iso=s=>s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);$('from').value=iso(data.range.from);$('to').value=iso(data.range.to);$('from').disabled=$('to').disabled=true;$('go').hidden=true;
   $('status').textContent='Anonymised sample data';
+}
+// Public page with a live server: open with the saved sample (fast, free), live check on request for any dates up to 31 days.
+async function startPublic(){
+  const d=new Date(),iso=x=>x.toISOString().slice(0,10);$('to').value=iso(d);d.setDate(d.getDate()-30);$('from').value=iso(d);
+  $('rulesCard').hidden=true;$('demoCard').hidden=false;
+  $('demoCard').querySelector('p').innerHTML='Plates, cards and stations are replaced on the server, and coordinates and prices are removed. Pick up to 31 days and press <b>Check purchases</b> for a live check; the first check of a period takes 1 to 2 minutes. Until then you see a saved sample run (1 Oct to 9 Nov). How each scenario is decided: <a href="scenarios.html">Scenario guide</a>.';
+  try{data=await j('demo-data.json');render();$('status').textContent='Showing the saved sample run. Pick dates and press Check purchases for a live check.'}catch(e){}
 }
 async function check(){
   $('err').textContent='';$('go').disabled=true;$('status').textContent='Reading Shell and Geotab…';
   try{data=await assess();filter=null;render();if(DEMO)showDemo();else $('status').textContent='Done at '+new Date(data.generated).toLocaleTimeString()}
   catch(e){const d=el('div','err','Could not check: '+e.message);$('err').replaceChildren(d);$('status').textContent=''}
-  if(!DEMO)$('go').disabled=false;
+  if(!DEMO||API)$('go').disabled=false;
 }
 function render(){
   $('sumCard').hidden=false;
@@ -128,7 +139,7 @@ function render(){
   });
 }
 $('go').onclick=check;$('saveRules').onclick=()=>saveRules().catch(e=>$('err').replaceChildren(el('div','err',e.message)));
-loadRules().catch(()=>check()); // no rules endpoint means no live server: open the demo straight away
+if(API)startPublic();else loadRules().catch(()=>check()); // no rules endpoint means no live server: open the sample straight away
 </script>
 </body>
 </html>

@@ -169,4 +169,4 @@ if (require.main === module) http.createServer(async (req, res) => {
     send(res, 404, 'text/plain', 'not found');
   } catch (e) { send(res, 500, 'application/json', JSON.stringify({ error: String(e.message) })); }
 }).listen(PORT, '127.0.0.1', () => console.log('FleetYes sample on http://localhost:' + PORT));
-module.exports = { run };
+module.exports = { run, loadRules };
