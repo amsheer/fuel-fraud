@@ -146,7 +146,8 @@ if (require.main === module) http.createServer(async (req, res) => {
   if (!ok.has(req.headers.host)) return send(res, 403, 'text/plain', 'bad host');
   const u = new URL(req.url, 'http://x');
   try {
-    if (u.pathname === '/') return send(res, 200, 'text/html; charset=utf-8', fs.readFileSync(path.join(__dirname, 'index.html')));
+    const page = { '/': 'index.html', '/scenarios.html': 'scenarios.html' }[u.pathname];
+    if (page) return send(res, 200, 'text/html; charset=utf-8', fs.readFileSync(path.join(__dirname, 'docs', page)));
     if (u.pathname === '/api/rules' && req.method === 'GET') return send(res, 200, 'application/json', JSON.stringify(loadRules()));
     if (u.pathname === '/api/rules' && req.method === 'PUT') {
       let b = ''; for await (const c of req) b += c;
