@@ -144,6 +144,13 @@ function notInGeotab(tx, ctx) {
   return typo ? { sure: false, typo } : { sure: true };
 }
 
+// A purchase nobody can be tied to: no Geotab vehicle, the station position is known, and no tracked truck was there.
+// If some tracked trucks sent no GPS in the window they cannot be ruled out, and the text says so.
+function notTraceable(o) {
+  if (!['notgeotab', 'unidentified'].includes(o.outcome) || o.vehicle || !o.hasCoords || (o.here || []).length) return null;
+  return `Not traceable: no tracked truck was within ${o.radiusM} m of the station at the time` + (o.silent ? `; ${o.silent} of ${o.total} tracked trucks sent no GPS then, so they cannot be ruled out` : '') + '.';
+}
+
 function assess(tx, ctx, rules) {
   const policy = checkPolicy(tx, rules);
   const absent = notInGeotab(tx, ctx);
@@ -180,4 +187,4 @@ function assess(tx, ctx, rules) {
   return { ...base, ...c };
 }
 
-module.exports = { within1, presence, norm, km, purchaseUtc, shellTransactions, geoGet, geoMulti, geo, tolerance, MIN_FILL_L, checkPolicy, consumption, identifyVehicle, compareLitres, assess };
+module.exports = { notTraceable, within1, presence, norm, km, purchaseUtc, shellTransactions, geoGet, geoMulti, geo, tolerance, MIN_FILL_L, checkPolicy, consumption, identifyVehicle, compareLitres, assess };

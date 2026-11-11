@@ -5,7 +5,7 @@ const L = require('./lib');
 const PORT = 8800, RULES = path.join(__dirname, 'rules.json');
 const loadRules = () => JSON.parse(fs.readFileSync(RULES, 'utf8'));
 const ymdToIso = (s, add = 0) => new Date(Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8)) + add * 86400000).toISOString();
-const MIN = 60000, NEAR_KM = 0.3, FILL_WINDOW = 90 * MIN, GPS_WINDOW = 15 * MIN;
+const MIN = 60000, NEAR_KM = 0.3, FILL_WINDOW = 90 * MIN, GPS_DEFAULT_MIN = 15, RADIUS_DEFAULT_M = 300;
 
 async function logPoints(calls) { // calls: [{dev, from, to}] -> array of point arrays, batched
   const out = [];
@@ -51,10 +51,11 @@ async function run(from, to, rules) {
 
   // GPS presence per purchase and truck: stopped at the station? where was it at payment time? (15 min either side)
   const idOf = t => L.norm(t.VehicleRegistration), ownDev = t => byPlate[idOf(t)] || cardMap[t.CardId];
+  const traceM = rules.trace?.radius_m ?? RADIUS_DEFAULT_M, gpsWin = (rules.trace?.window_min ?? GPS_DEFAULT_MIN) * MIN; // "at the station" = within traceM, +-gpsWin of payment
   const presenceBy = txs.map(() => ({}));
   const fetchPresence = async jobs => {
-    const pts = await logPoints(jobs.map(j => ({ dev: j.dev, from: new Date(txs[j.i].utc - GPS_WINDOW).toISOString(), to: new Date(+txs[j.i].utc + GPS_WINDOW).toISOString() })));
-    jobs.forEach((j, k) => { const t = txs[j.i]; presenceBy[j.i][j.dev] = L.presence(pts[k].filter(p => p.id), t.lat, t.lon, +t.utc); }); // id null = calculated edge point
+    const pts = await logPoints(jobs.map(j => ({ dev: j.dev, from: new Date(txs[j.i].utc - gpsWin).toISOString(), to: new Date(+txs[j.i].utc + gpsWin).toISOString() })));
+    jobs.forEach((j, k) => { const t = txs[j.i]; presenceBy[j.i][j.dev] = L.presence(pts[k].filter(p => p.id), t.lat, t.lon, +t.utc, traceM / 1000); }); // id null = calculated edge point
   };
   await fetchPresence(txs.flatMap((t, i) => t.lat == null ? [] : ownDev(t) ? [{ i, dev: ownDev(t).id }] : devices.map(d => ({ i, dev: d.id }))));
   // card truck is not at the station: who else was?
@@ -90,6 +91,9 @@ async function run(from, to, rules) {
     if (r.distanceKm != null && r.distanceKm > 1) r.signals.push(`Vehicle GPS was ${r.distanceKm.toFixed(1)} km from the station`);
     if (dev && t.lat != null && own && own.closestKm == null) r.signals.push('Vehicle sent no GPS near the purchase time');
     if (t.lat == null) r.signals.push('Shell gave no station coordinates');
+    const silent = devices.filter(d => pres[d.id] && pres[d.id].closestKm == null).length;
+    const flag = L.notTraceable({ outcome: r.outcome, vehicle: r.vehicle, hasCoords: t.lat != null, here: atStation, silent, total: devices.length, radiusM: traceM });
+    if (flag) { r.untraceable = true; r.signals.push(flag); }
     return r;
   });
   // typed odometer (driver keys it at the pump; filled on few rows): km since the previous typed reading, works without Geotab
@@ -137,7 +141,7 @@ async function run(from, to, rules) {
   repeats.forEach(a => a.forEach(r => r.signals.push(`Same card bought exactly ${r.litres} L ${a.length} times`)));
   const counts = {}; rows.forEach(r => counts[r.outcome] = (counts[r.outcome] || 0) + 1);
   const unexplained = rows.filter(r => r.outcome === 'quantity' && r.diff > 0).reduce((s, r) => s + r.diff, 0);
-  return { generated: new Date().toISOString(), range: { from, to }, shellRows: raw.length, mergedLines: txs.reduce((s, x) => s + x.lines - 1, 0), adblueSkipped, devices: devices.length, devicesWithFills: Object.keys(fillsBy).length, counts, unexplainedLitres: +unexplained.toFixed(1), repeats: repeats.map(a => ({ card: a[0].card, plate: a[0].plate, litres: a[0].litres, times: a.length })), rows };
+  return { generated: new Date().toISOString(), range: { from, to }, shellRows: raw.length, untraceable: rows.filter(r => r.untraceable).length, untraceableLitres: Math.round(rows.filter(r => r.untraceable).reduce((s, r) => s + r.litres, 0)), mergedLines: txs.reduce((s, x) => s + x.lines - 1, 0), adblueSkipped, devices: devices.length, devicesWithFills: Object.keys(fillsBy).length, counts, unexplainedLitres: +unexplained.toFixed(1), repeats: repeats.map(a => ({ card: a[0].card, plate: a[0].plate, litres: a[0].litres, times: a.length })), rows };
 }
 
 const cache = new Map();
@@ -156,6 +160,7 @@ if (require.main === module) http.createServer(async (req, res) => {
       r.city_boundary.enabled = !!n.city_boundary.enabled; r.city_boundary.radius_km = Math.max(1, +n.city_boundary.radius_km || r.city_boundary.radius_km);
       r.approved_stations.enabled = !!n.approved_stations.enabled; r.approved_stations.site_codes = n.approved_stations.site_codes.map(String);
       if (n.tolerance) { r.tolerance = { min_litres: Math.max(0, +n.tolerance.min_litres || 0), percent: Math.max(0, +n.tolerance.percent || 0) }; }
+      if (n.trace) { r.trace = { radius_m: Math.min(2000, Math.max(50, +n.trace.radius_m || 300)), window_min: Math.min(60, Math.max(5, +n.trace.window_min || 15)) }; }
       if (n.consumption) { r.consumption.enabled = !!n.consumption.enabled; r.consumption.max_l_per_100km = Math.max(1, +n.consumption.max_l_per_100km || r.consumption.max_l_per_100km); }
       fs.writeFileSync(RULES, JSON.stringify(r, null, 2)); cache.clear();
       return send(res, 200, 'application/json', JSON.stringify(r));

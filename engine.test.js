@@ -68,4 +68,13 @@ assert.equal(out(tx({ VehicleRegistration: '' }), ctx(gp)), 'unidentified');    
 assert.equal(out(tx({ VehicleRegistration: 'XY99 TWZ' }), ctx({ ...gp, cardMap: { 7: dev } })), 'supported'); // card history links it to a Geotab truck
 assert.ok(L.within1('AB12CDE', 'AB12CDF') && L.within1('AB12CDE', 'AB12CD') && !L.within1('AB12CDE', 'AB12CXY'));
 assert.equal(out(tx({ VehicleRegistration: 'XY99 TWZ', SiteCode: '9' }), ctx(gp), { ...R, approved_stations: { enabled: true, site_codes: ['1'] } }), 'policy'); // policy still comes first
+// --- "not traceable" flag
+const nt = o => L.notTraceable({ outcome: 'notgeotab', vehicle: null, hasCoords: true, here: [], silent: 0, total: 10, radiusM: 300, ...o });
+assert.ok(/no tracked truck was within 300 m/.test(nt({})));
+assert.equal(nt({ here: ['AB12CDE'] }), null);                    // a tracked truck was there
+assert.equal(nt({ hasCoords: false }), null);                     // no station position: cannot say
+assert.equal(nt({ vehicle: 'AFP_X_Diesel_AB12CDE' }), null);      // vehicle known
+assert.equal(nt({ outcome: 'supported' }), null);                 // only for purchases nobody is tied to
+assert.ok(/3 of 10 tracked trucks sent no GPS/.test(nt({ silent: 3 })));  // silent trackers cannot be ruled out
+assert.equal(nt({ outcome: 'unidentified' }) === null, false);
 console.log('all checks passed');

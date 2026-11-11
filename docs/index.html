@@ -27,7 +27,7 @@ button:focus-visible,input:focus-visible,.chip:focus-visible,tr.r:focus-visible{
 .tile b{display:block;font-size:26px;line-height:1.1}.tile span{font-size:12px;color:var(--muted)}
 .tile.on{outline:2px solid var(--teal)}
 .chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:650;white-space:nowrap}
-.supported{background:var(--greenp);color:var(--green)}.partly{background:#e4f4ef;color:#087f79}.notgeotab{background:#e6eef8;color:#2b5b9a}.quantity,.policy,.suspect{background:var(--redp);color:var(--red)}
+.supported{background:var(--greenp);color:var(--green)}.partly{background:#e4f4ef;color:#087f79}.notgeotab{background:#e6eef8;color:#2b5b9a}.untraceable{background:#fbf0dc;color:#9a661d;margin-left:6px}.quantity,.policy,.suspect{background:var(--redp);color:var(--red)}
 .insufficient,.ambiguous{background:var(--amberp);color:var(--amber)}.unidentified{background:var(--greyp);color:var(--grey)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:8px;border-bottom:1px solid var(--line)}
@@ -67,6 +67,7 @@ tr.d td{background:#f8fbfa;font-size:13px}
       <div class="rule"><label><input type="checkbox" id="cbOn"> Fuel only near the depot</label><div class="bar" style="margin-top:8px"><label>Radius (km)<input type="number" id="cbKm" min="1"></label></div><p class="note" style="margin:8px 0 0">Depot is a made-up point in Leicestershire. This fleet fuels across the UK, so switch it on to see Policy exceptions appear.</p></div>
       <div class="rule"><label><input type="checkbox" id="asOn"> Fuel only at approved stations</label><div class="bar" style="margin-top:8px"><label>Shell site codes, comma separated<input type="text" id="asCodes" style="width:240px"></label></div><p class="note" style="margin:8px 0 0">Sample list: the three stations used most. Use Shell SiteCode, not the name.</p></div>
       <div class="rule"><label>Allowed gap between litres bought and litres seen</label><div class="bar" style="margin-top:8px"><label>At least (L)<input type="number" id="tlMin" min="0"></label><label>or (% of purchase)<input type="number" id="tlPct" min="0"></label></div><p class="note" style="margin:8px 0 0">The larger of the two. A bigger gap becomes a Quantity exception. Not tuned on known fraud cases.</p></div>
+      <div class="rule"><label>Tracing a truck to a purchase</label><div class="bar" style="margin-top:8px"><label>At the station within (m)<input type="number" id="trM" min="50" max="2000"></label><label>Time window (± min)<input type="number" id="trMin" min="5" max="60"></label></div><p class="note" style="margin:8px 0 0">A tracked truck counts as at the station if its GPS was within this distance, slow, within this time of payment. Purchases nobody can be tied to get the "Not traceable" flag.</p></div>
       <div class="rule"><label><input type="checkbox" id="coOn"> Flag litres that do not fit the distance driven</label><div class="bar" style="margin-top:8px"><label>Limit (litres per 100 km)<input type="number" id="coMax" min="1"></label></div><p class="note" style="margin:8px 0 0">Compares the litres bought with the km the truck drove since its previous purchase, assuming that purchase filled the tank. Sample limit, not tested.</p></div>
     </div>
     <div class="bar" style="margin-top:12px"><button class="ghost" id="saveRules">Save rules and check again</button></div>
@@ -75,15 +76,15 @@ tr.d td{background:#f8fbfa;font-size:13px}
 </main>
 <script src="config.js"></script>
 <script>
-const LABEL={notgeotab:'Not in Geotab',suspect:'Suspected: vehicle elsewhere',partly:'Partly verified',supported:'Supported match',quantity:'Quantity exception',policy:'Policy exception',insufficient:'Insufficient data',unidentified:'Vehicle not identified',ambiguous:'Needs review'};
+const LABEL={untraceable:'Not traceable',notgeotab:'Not in Geotab',suspect:'Suspected: vehicle elsewhere',partly:'Partly verified',supported:'Supported match',quantity:'Quantity exception',policy:'Policy exception',insufficient:'Insufficient data',unidentified:'Vehicle not identified',ambiguous:'Needs review'};
 const ORDER=['suspect','quantity','policy','ambiguous','partly','notgeotab','unidentified','insufficient','supported'];
 const $=id=>document.getElementById(id);
 const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e};
 let data=null,filter=null;
 async function j(url,opt){const r=await fetch(url,opt),b=await r.json();if(!r.ok)throw new Error(b.error||('HTTP '+r.status));return b}
-async function loadRules(){const r=await j('/api/rules');$('cbOn').checked=r.city_boundary.enabled;$('cbKm').value=r.city_boundary.radius_km;$('asOn').checked=r.approved_stations.enabled;$('asCodes').value=r.approved_stations.site_codes.join(', ');$('tlMin').value=r.tolerance.min_litres;$('tlPct').value=r.tolerance.percent;$('coOn').checked=r.consumption.enabled;$('coMax').value=r.consumption.max_l_per_100km}
+async function loadRules(){const r=await j('/api/rules');$('cbOn').checked=r.city_boundary.enabled;$('cbKm').value=r.city_boundary.radius_km;$('asOn').checked=r.approved_stations.enabled;$('asCodes').value=r.approved_stations.site_codes.join(', ');$('trM').value=r.trace.radius_m;$('trMin').value=r.trace.window_min;$('tlMin').value=r.tolerance.min_litres;$('tlPct').value=r.tolerance.percent;$('coOn').checked=r.consumption.enabled;$('coMax').value=r.consumption.max_l_per_100km}
 async function saveRules(){
-  await j('/api/rules',{method:'PUT',body:JSON.stringify({city_boundary:{enabled:$('cbOn').checked,radius_km:+$('cbKm').value},approved_stations:{enabled:$('asOn').checked,site_codes:$('asCodes').value.split(',').map(s=>s.trim()).filter(Boolean)},tolerance:{min_litres:+$('tlMin').value,percent:+$('tlPct').value},consumption:{enabled:$('coOn').checked,max_l_per_100km:+$('coMax').value}})});
+  await j('/api/rules',{method:'PUT',body:JSON.stringify({city_boundary:{enabled:$('cbOn').checked,radius_km:+$('cbKm').value},approved_stations:{enabled:$('asOn').checked,site_codes:$('asCodes').value.split(',').map(s=>s.trim()).filter(Boolean)},trace:{radius_m:+$('trM').value,window_min:+$('trMin').value},tolerance:{min_litres:+$('tlMin').value,percent:+$('tlPct').value},consumption:{enabled:$('coOn').checked,max_l_per_100km:+$('coMax').value}})});
   return check();
 }
 let DEMO=false;
@@ -118,7 +119,7 @@ async function check(){
 function render(){
   $('sumCard').hidden=false;
   const tiles=$('tiles');tiles.replaceChildren();
-  ORDER.forEach(k=>{const n=data.counts[k]||0;const b=el('button','tile'+(filter===k?' on':''));b.append(el('b',null,n),el('span',null,LABEL[k]));b.onclick=()=>{filter=filter===k?null:k;render()};tiles.append(b)});
+  [...ORDER,'untraceable'].forEach(k=>{const n=k==='untraceable'?data.rows.filter(r=>r.untraceable).length:(data.counts[k]||0);const b=el('button','tile'+(filter===k?' on':''));b.append(el('b',null,n),el('span',null,LABEL[k]));b.onclick=()=>{filter=filter===k?null:k;render()};tiles.append(b)});
   const rep=data.repeats.map(r=>`${r.plate||r.card} bought exactly ${r.litres} L ${r.times} times`).join('; ');
   $('sumNote').textContent=`${data.shellRows} Shell rows. ${data.mergedLines} split diesel lines added to their purchase, ${data.adblueSkipped} AdBlue line skipped (not fuel). ${data.devices} Geotab vehicles, ${data.devicesWithFills} with fill-up data. Litres bought but not seen going into the tank (Quantity exceptions only): ${data.unexplainedLitres} L.`+(rep?' Repeated purchases: '+rep+'.':'');
   // Vehicles that exist only in Shell: we are sure they are not Geotab vehicles, so only the Shell side can be shown
@@ -130,12 +131,12 @@ function render(){
     Object.entries(g).sort((a,b)=>b[1].l-a[1].l).forEach(([p,x])=>{const r=el('tr');[p,x.c.size,x.n,x.l.toFixed(0),x.s.size,x.a.slice(0,10),x.b.slice(0,10)].forEach((v,i)=>r.append(el('td',i>1&&i<5?'num':'',v)));tb2.append(r)});
     so.append(tb2,el('p','note','These plates are real registrations that Geotab does not have, so there is no tank level, GPS or odometer to check them against. Click the "Not in Geotab" tile to see each purchase.'));
   }
-  const rows=data.rows.filter(r=>!filter||r.outcome===filter).sort((a,b)=>ORDER.indexOf(a.outcome)-ORDER.indexOf(b.outcome)||(a.when<b.when?1:-1));
+  const rows=data.rows.filter(r=>!filter||(filter==='untraceable'?r.untraceable:r.outcome===filter)).sort((a,b)=>ORDER.indexOf(a.outcome)-ORDER.indexOf(b.outcome)||(a.when<b.when?1:-1));
   $('tblTitle').textContent='Purchases ('+rows.length+(filter?' · '+LABEL[filter]:'')+')';
   const tb=$('tbl').tBodies[0];tb.replaceChildren();
   rows.forEach(r=>{
     const tr=el('tr','r');tr.tabIndex=0;
-    const chip=el('span','chip '+r.outcome,LABEL[r.outcome]);const c=el('td');c.append(chip);
+    const chip=el('span','chip '+r.outcome,LABEL[r.outcome]);const c=el('td');c.append(chip);if(r.untraceable)c.append(el('span','chip untraceable','Not traceable'));
     [el('td',null,r.when.slice(0,16).replace('T',' ')),el('td',null,r.plate||'(blank)'),el('td',r.vehicle?'':'muted',r.vehicle||'none'),el('td',null,r.matchedBy),el('td',null,r.site||r.siteCode),el('td','num',r.litres.toFixed(1)),c].forEach(x=>tr.append(x));
     const dt=el('tr','d');dt.hidden=true;const td=el('td');td.colSpan=7;
     td.append(el('div',null,r.reason||''));

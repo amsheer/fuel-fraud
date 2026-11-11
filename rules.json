@@ -14,6 +14,7 @@
     "min_litres": 50,
     "percent": 10
   },
+  "trace": { "radius_m": 300, "window_min": 15 },
   "consumption": {
     "enabled": true,
     "max_l_per_100km": 60
