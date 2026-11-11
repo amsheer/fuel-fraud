@@ -41,6 +41,7 @@ async function run(from, to, rules) {
   devices.forEach(d => { byPlate[L.norm(String(d.name).split('_').pop())] = d; if (d.licensePlate) byPlate[L.norm(d.licensePlate)] = d; });
   // plate typed wrongly at the pump for a tracked truck (assumed typo, confirm with the customer): rules.json plate_overrides
   Object.entries(rules.plate_overrides || {}).forEach(([from, to]) => { if (byPlate[L.norm(to)]) byPlate[L.norm(from)] = byPlate[L.norm(to)]; });
+  const geoPlates = [...new Set(devices.flatMap(d => [L.norm(String(d.name).split('_').pop()), L.norm(d.licensePlate)]).filter(Boolean))]; // plates Geotab really has
   const fillsBy = {}; fills.forEach(f => (fillsBy[f.device.id] = fillsBy[f.device.id] || []).push(f));
 
   // history: a card that always paired with one Geotab vehicle by plate
@@ -80,7 +81,7 @@ async function run(from, to, rules) {
   const rows = txs.map((t, i) => {
     const dev = ownDev(t), pres = presenceBy[i], own = dev ? pres[dev.id] : null;
     const atStation = devices.filter(d => (!dev || d.id !== dev.id) && pres[d.id] && pres[d.id].stoppedHere);
-    const r = L.assess(t, { byPlate, cardMap, nearby: dev ? [] : atStation, atStation, presence: own, presenceOf: d => pres[d.id], hasSensor: d => !!fillsBy[d.id], distanceKm: own ? (own.payDistKm != null ? own.payDistKm : own.closestKm) : null, fillFor }, rules);
+    const r = L.assess(t, { byPlate, cardMap, geoPlates, nearby: dev ? [] : atStation, atStation, presence: own, presenceOf: d => pres[d.id], hasSensor: d => !!fillsBy[d.id], distanceKm: own ? (own.payDistKm != null ? own.payDistKm : own.closestKm) : null, fillFor }, rules);
     r.coords = t.lat == null ? null : [t.lat, t.lon];
     r.odometerTyped = t.OdometerInput || null;
     r.signals = [];

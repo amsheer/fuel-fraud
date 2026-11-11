@@ -128,15 +128,37 @@ function presence(points, lat, lon, payMs, radiusKm = 0.3, stoppedKmh = 5, gapMi
   return r;
 }
 
+// One edit (swap, add or drop a character) apart: a typed plate this close to a Geotab plate is most likely a typo.
+const within1 = (a, b) => {
+  if (a === b) return true; if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return a.length === b.length ? a.slice(i + 1) === b.slice(i + 1) : a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+};
+const REGISTRATION = /^[A-Z]{2}\d{2}[A-Z]{3}$/; // current UK format; other formats and placeholders (TRUCK 1) are never called "not in Geotab"
+// We are SURE a vehicle is not in Geotab only when: the plate is a real registration, it is not a Geotab plate, no card
+// history or override links it to one, and it is not one character away from a Geotab plate (a probable typo).
+function notInGeotab(tx, ctx) {
+  const plate = norm(tx.VehicleRegistration);
+  if (!REGISTRATION.test(plate) || ctx.byPlate[plate] || ctx.cardMap[tx.CardId]) return { sure: false };
+  const typo = (ctx.geoPlates || []).find(p => within1(p, plate));
+  return typo ? { sure: false, typo } : { sure: true };
+}
+
 function assess(tx, ctx, rules) {
   const policy = checkPolicy(tx, rules);
-  const v = identifyVehicle(tx, ctx);
+  const absent = notInGeotab(tx, ctx);
+  const v = absent.sure ? { device: null, how: 'none' } : identifyVehicle(tx, ctx);
   const base = { id: tx.TransactionId, line: tx.TransactionLine, when: tx.utc, site: tx.SiteName, siteCode: tx.SiteCode, plate: tx.VehicleRegistration, card: tx.CardId, litres: Number(tx.Quantity), vehicle: v.device ? v.device.name : null, matchedBy: v.how, distanceKm: ctx.distanceKm == null ? null : +ctx.distanceKm.toFixed(2) };
   if (policy) return { ...base, outcome: 'policy', reason: policy };
   const here = (ctx.atStation || []).map(d => String(d.name).split('_').pop());
-  if (!v.device) {
+  if (absent.sure) {
     const seen = here.length ? ` Tracked trucks stopped at the station: ${here.join(', ')}.` : '';
-    return { ...base, outcome: v.how === 'ambiguous' ? 'ambiguous' : 'unidentified', reason: v.note + '.' + seen, likely: here };
+    return { ...base, outcome: 'notgeotab', reason: `Plate ${tx.VehicleRegistration} is not a Geotab vehicle (${(ctx.geoPlates || []).length} Geotab vehicles checked). There is no tank, GPS or odometer to compare, so this is Shell data only.` + seen, likely: here };
+  }
+  if (!v.device) {
+    const typoNote = absent.typo ? ` The plate is one character from the Geotab vehicle ${absent.typo}: probably a typo. If so, add it to plate_overrides.` : '';
+    const seen = here.length ? ` Tracked trucks stopped at the station: ${here.join(', ')}.` : '';
+    return { ...base, outcome: v.how === 'ambiguous' ? 'ambiguous' : 'unidentified', reason: v.note + '.' + typoNote + seen, likely: here };
   }
   const c = compareLitres(tx, ctx.fillFor(v.device, tx), rules.tolerance);
   // A place-and-time match is only a guess. A litres mismatch on a guess goes to review, not to "exception".
@@ -158,4 +180,4 @@ function assess(tx, ctx, rules) {
   return { ...base, ...c };
 }
 
-module.exports = { presence, norm, km, purchaseUtc, shellTransactions, geoGet, geoMulti, geo, tolerance, MIN_FILL_L, checkPolicy, consumption, identifyVehicle, compareLitres, assess };
+module.exports = { within1, presence, norm, km, purchaseUtc, shellTransactions, geoGet, geoMulti, geo, tolerance, MIN_FILL_L, checkPolicy, consumption, identifyVehicle, compareLitres, assess };

@@ -27,7 +27,7 @@ button:focus-visible,input:focus-visible,.chip:focus-visible,tr.r:focus-visible{
 .tile b{display:block;font-size:26px;line-height:1.1}.tile span{font-size:12px;color:var(--muted)}
 .tile.on{outline:2px solid var(--teal)}
 .chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:650;white-space:nowrap}
-.supported{background:var(--greenp);color:var(--green)}.partly{background:#e4f4ef;color:#087f79}.quantity,.policy,.suspect{background:var(--redp);color:var(--red)}
+.supported{background:var(--greenp);color:var(--green)}.partly{background:#e4f4ef;color:#087f79}.notgeotab{background:#e6eef8;color:#2b5b9a}.quantity,.policy,.suspect{background:var(--redp);color:var(--red)}
 .insufficient,.ambiguous{background:var(--amberp);color:var(--amber)}.unidentified{background:var(--greyp);color:var(--grey)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:8px;border-bottom:1px solid var(--line)}
@@ -59,7 +59,8 @@ tr.d td{background:#f8fbfa;font-size:13px}
     </div>
   </div>
   <div id="err"></div>
-  <div class="card" id="sumCard" hidden><h2>Result</h2><div class="tiles" id="tiles"></div><p class="note" id="sumNote" style="margin:12px 0 0"></p></div>
+  <div class="card" id="sumCard" hidden><h2>Result</h2><div class="tiles" id="tiles"></div><p class="note" id="sumNote" style="margin:12px 0 0"></p>
+    <div id="shellOnly" hidden style="margin-top:14px"></div></div>
   <div class="card" id="rulesCard">
     <h2>Partner rules (sample values, saved in rules.json)</h2>
     <div class="rules">
@@ -74,8 +75,8 @@ tr.d td{background:#f8fbfa;font-size:13px}
 </main>
 <script src="config.js"></script>
 <script>
-const LABEL={suspect:'Suspected: vehicle elsewhere',partly:'Partly verified',supported:'Supported match',quantity:'Quantity exception',policy:'Policy exception',insufficient:'Insufficient data',unidentified:'Vehicle not identified',ambiguous:'Needs review'};
-const ORDER=['suspect','quantity','policy','ambiguous','partly','unidentified','insufficient','supported'];
+const LABEL={notgeotab:'Not in Geotab',suspect:'Suspected: vehicle elsewhere',partly:'Partly verified',supported:'Supported match',quantity:'Quantity exception',policy:'Policy exception',insufficient:'Insufficient data',unidentified:'Vehicle not identified',ambiguous:'Needs review'};
+const ORDER=['suspect','quantity','policy','ambiguous','partly','notgeotab','unidentified','insufficient','supported'];
 const $=id=>document.getElementById(id);
 const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e};
 let data=null,filter=null;
@@ -120,6 +121,15 @@ function render(){
   ORDER.forEach(k=>{const n=data.counts[k]||0;const b=el('button','tile'+(filter===k?' on':''));b.append(el('b',null,n),el('span',null,LABEL[k]));b.onclick=()=>{filter=filter===k?null:k;render()};tiles.append(b)});
   const rep=data.repeats.map(r=>`${r.plate||r.card} bought exactly ${r.litres} L ${r.times} times`).join('; ');
   $('sumNote').textContent=`${data.shellRows} Shell rows. ${data.mergedLines} split diesel lines added to their purchase, ${data.adblueSkipped} AdBlue line skipped (not fuel). ${data.devices} Geotab vehicles, ${data.devicesWithFills} with fill-up data. Litres bought but not seen going into the tank (Quantity exceptions only): ${data.unexplainedLitres} L.`+(rep?' Repeated purchases: '+rep+'.':'');
+  // Vehicles that exist only in Shell: we are sure they are not Geotab vehicles, so only the Shell side can be shown
+  const so=$('shellOnly'),g={};data.rows.filter(r=>r.outcome==='notgeotab').forEach(r=>{const x=g[r.plate]=g[r.plate]||{n:0,l:0,a:r.when,b:r.when,s:new Set(),c:new Set()};x.n++;x.l+=r.litres;if(r.when<x.a)x.a=r.when;if(r.when>x.b)x.b=r.when;x.s.add(r.siteCode);x.c.add(r.card)});
+  so.replaceChildren();so.hidden=!Object.keys(g).length;
+  if(!so.hidden){
+    so.append(el('h2',null,'In Shell but not in Geotab (Shell data only)'));
+    const tb2=el('table'),hd=el('tr');['Plate typed','Cards','Purchases','Litres','Stations','First','Last'].forEach((h,i)=>hd.append(el('th',i>1&&i<5?'num':'',h)));tb2.append(hd);
+    Object.entries(g).sort((a,b)=>b[1].l-a[1].l).forEach(([p,x])=>{const r=el('tr');[p,x.c.size,x.n,x.l.toFixed(0),x.s.size,x.a.slice(0,10),x.b.slice(0,10)].forEach((v,i)=>r.append(el('td',i>1&&i<5?'num':'',v)));tb2.append(r)});
+    so.append(tb2,el('p','note','These plates are real registrations that Geotab does not have, so there is no tank level, GPS or odometer to check them against. Click the "Not in Geotab" tile to see each purchase.'));
+  }
   const rows=data.rows.filter(r=>!filter||r.outcome===filter).sort((a,b)=>ORDER.indexOf(a.outcome)-ORDER.indexOf(b.outcome)||(a.when<b.when?1:-1));
   $('tblTitle').textContent='Purchases ('+rows.length+(filter?' · '+LABEL[filter]:'')+')';
   const tb=$('tbl').tBodies[0];tb.replaceChildren();

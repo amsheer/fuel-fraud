@@ -58,4 +58,14 @@ const A = JSON.parse(a1).rows[0];
 assert.equal(A.vehicle, 'Truck ' + A.plate);                      // plate typed and device name give the same label
 assert.ok(A.reason.includes(A.plate) && A.reason.includes(A.card)); // labels are used inside the sentences
 assert.equal(A.coords, null);
+// --- "not in Geotab": only when we are sure
+const gp = { geoPlates: ['AB12CDE', 'ZZ99ZZZ'] };
+assert.equal(out(tx({ VehicleRegistration: 'XY99 TWZ' }), ctx(gp)), 'notgeotab');                          // real registration, not a Geotab plate
+assert.equal(out(tx({ VehicleRegistration: 'XY99 TWZ' }), ctx({ ...gp, nearby: [dev] })), 'notgeotab');   // a tracked truck at the station does not change that
+assert.equal(out(tx({ VehicleRegistration: 'AB12 CDF' }), ctx(gp)), 'unidentified');                       // one character from AB12CDE: probably a typo
+assert.equal(out(tx({ VehicleRegistration: 'TRUCK 1' }), ctx(gp)), 'unidentified');                        // placeholder, not a registration
+assert.equal(out(tx({ VehicleRegistration: '' }), ctx(gp)), 'unidentified');                               // blank
+assert.equal(out(tx({ VehicleRegistration: 'XY99 TWZ' }), ctx({ ...gp, cardMap: { 7: dev } })), 'supported'); // card history links it to a Geotab truck
+assert.ok(L.within1('AB12CDE', 'AB12CDF') && L.within1('AB12CDE', 'AB12CD') && !L.within1('AB12CDE', 'AB12CXY'));
+assert.equal(out(tx({ VehicleRegistration: 'XY99 TWZ', SiteCode: '9' }), ctx(gp), { ...R, approved_stations: { enabled: true, site_codes: ['1'] } }), 'policy'); // policy still comes first
 console.log('all checks passed');
