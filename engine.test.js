@@ -49,7 +49,7 @@ assert.equal(out(tx({ VehicleRegistration: 'X' }), ctx({ nearby: [dev], fillFor:
 // --- anonymiser: no plate, card, station or coordinate may survive, labels are stable, same truck = same label
 const { anonymise } = require('./anonymise');
 const fake = { rows: [{ id: 'T9X', plate: 'QX12 RSZ', vehicle: 'AFP_MAN_Diesel_QX12RSZ', card: 4518725, siteCode: '2340', site: 'SHELL EXAMPLE SITE', coords: [52.7, -1.3], price: 1.5, odometerTyped: 123456,
-  reason: 'AFP_MAN_Diesel_QX12RSZ was stopped at the station. Card 4518725 at Station code 2340 near XY99TWZ.', signals: ['Fleet ID typed at the pump is QR12STU, but the card\'s vehicle is QX12 RSZ'], likely: ['LM34NPZ'] }], repeats: [{ plate: 'QX12 RSZ', card: 4518725, litres: 50, times: 3 }] };
+  reason: 'AFP_MAN_Diesel_QX12RSZ was stopped at the station. Card 4518725 at Station code 2340 near XY99TWZ.', signals: ['Fleet ID typed at the pump is QR12STU, but the card\'s vehicle is QX12 RSZ'], likely: ['LM34NPZ', 'AFP_DAF_Diesel_QR12STU'] }], repeats: [{ plate: 'QX12 RSZ', card: 4518725, litres: 50, times: 3 }] };
 const a1 = JSON.stringify(anonymise(fake, 'salt1')), a2 = JSON.stringify(anonymise(fake, 'salt1')), a3 = JSON.stringify(anonymise(fake, 'salt2'));
 ['QX12', 'RSZ', 'XY99', 'TWZ', 'QR12', 'LM34', '4518725', '2340', 'SHELL EXAMPLE', '52.7', '123456', 'AFP_'].forEach(s => assert.ok(!a1.includes(s), 'leaked ' + s));
 assert.equal(a1, a2);                    // stable for one salt

@@ -25,7 +25,7 @@ function anonymise(result, salt) {
     ...r, id: tag('T', r.id), plate: r.plate ? tag('VEH', norm(r.plate)) : '', vehicle: r.vehicle ? 'Truck ' + tag('VEH', norm(String(r.vehicle).split('_').pop())) : null,
     card: tag('CARD', String(r.card)), siteCode: tag('S', String(r.siteCode)), site: 'Station ' + tag('S', String(r.siteCode)),
     coords: null, price: null, odometerTyped: null, reason: clean(r.reason), signals: (r.signals || []).map(clean),
-    likely: (r.likely || []).map(x => clean('AFP_X_Diesel_' + x)) }));
+    likely: (r.likely || []).map(x => clean(/^AFP_/.test(x) ? x : 'AFP_X_Diesel_' + x)) })); // a name is a full device name or just a plate
   return { ...result, rows, repeats: (result.repeats || []).map(x => ({ ...x, plate: x.plate ? tag('VEH', norm(x.plate)) : '', card: tag('CARD', String(x.card)) })), anonymised: true };
 }
 module.exports = { anonymise };
