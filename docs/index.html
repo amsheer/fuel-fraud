@@ -36,6 +36,8 @@ tr.r{cursor:pointer}tr.r:hover{background:#f6faf9}
 tr.d td{background:#f8fbfa;font-size:13px}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
+td.cell{font-size:13px;line-height:1.4}td.cell .sub{font-size:12px;color:var(--muted)}
+ul.fleet{list-style:none;margin:0;padding:0;font-size:12px;white-space:nowrap;color:var(--muted)}ul.fleet li.here{color:var(--ink)}ul.fleet li.match{color:var(--green);font-weight:600}
 .sig{color:var(--red);margin:2px 0 0}
 .note{font-size:12.5px;color:var(--muted)}
 .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
@@ -72,7 +74,7 @@ tr.d td{background:#f8fbfa;font-size:13px}
     </div>
     <div class="bar" style="margin-top:12px"><button class="ghost" id="saveRules">Save rules and check again</button></div>
   </div>
-  <div class="card"><h2 id="tblTitle">Purchases</h2><div class="scroll"><table id="tbl"><thead><tr><th>When (UTC)</th><th>Plate typed</th><th>Vehicle in Geotab</th><th>Found by</th><th>Station</th><th class="num">Litres</th><th>Result</th></tr></thead><tbody></tbody></table></div></div>
+  <div class="card"><h2 id="tblTitle">Purchases</h2><div class="scroll"><table id="tbl"><thead><tr><th>When (UTC)</th><th>Station</th><th>Vehicle no.</th><th class="num">Litres</th><th>Fuel fill (Geotab)</th><th>Distance of each fleet vehicle from the station</th><th>Result</th></tr></thead><tbody></tbody></table></div></div>
 </main>
 <script src="config.js"></script>
 <script>
@@ -116,6 +118,28 @@ async function check(){
   catch(e){const d=el('div','err','Could not check: '+e.message);$('err').replaceChildren(d);$('status').textContent=''}
   if(!DEMO||API)$('go').disabled=false;
 }
+const hm=s=>s?new Date(s).toISOString().slice(11,16):'?';
+const dist=k=>k==null?'no GPS':k<1?Math.round(k*1000)+' m':k.toFixed(1)+' km';
+function stationCell(r){
+  const s=r.station||{name:r.site,code:r.siteCode,lat:r.coords&&r.coords[0],lon:r.coords&&r.coords[1]},td=el('td','cell');
+  td.append(el('b',null,s.name||('Station '+s.code)),el('div','sub',[s.code&&('Code '+s.code),s.country].filter(Boolean).join(' · ')),el('div','sub',s.lat!=null?s.lat+', '+s.lon:'no coordinates'));
+  return td;
+}
+function fillCell(r){
+  const f=r.fill,td=el('td','cell');
+  if(!f){td.append(el('span','muted','-'));return td}
+  if(f.none){td.append(el('span','muted',f.none));return td}
+  td.append(el('div',null,`${hm(f.start)} → ${hm(f.peak)}`),el('div',null,`Level ${f.from}% → ${f.to}% (+${f.to-f.from})`),el('div','sub',f.litres!=null?`≈ ${f.litres} L into a ${f.cap} L tank`:'tank size unknown'));
+  return td;
+}
+function fleetCell(r){
+  const td=el('td','cell');
+  if(!r.fleet){td.append(el('span','muted','-'));return td}
+  if(!r.fleet.length){td.append(el('span','muted','no station coordinates'));return td}
+  const ul=el('ul','fleet');
+  r.fleet.forEach(v=>{const li=el('li',v.matched?'match':v.stopped?'here':null,`${v.matched?'✓ ':''}${v.vehicle}: ${dist(v.km)}${v.km!=null&&!v.atPay?' (closest)':''}${v.stopped?' · stopped here':''}`);ul.append(li)});
+  td.append(ul);return td;
+}
 function render(){
   $('sumCard').hidden=false;
   const tiles=$('tiles');tiles.replaceChildren();
@@ -137,7 +161,7 @@ function render(){
   rows.forEach(r=>{
     const tr=el('tr','r');tr.tabIndex=0;
     const chip=el('span','chip '+r.outcome,LABEL[r.outcome]);const c=el('td');c.append(chip);if(r.untraceable)c.append(el('span','chip untraceable','Not traceable'));
-    [el('td',null,r.when.slice(0,16).replace('T',' ')),el('td',null,r.plate||'(blank)'),el('td',r.vehicle?'':'muted',r.vehicle||'none'),el('td',null,r.matchedBy),el('td',null,r.site||r.siteCode),el('td','num',r.litres.toFixed(1)),c].forEach(x=>tr.append(x));
+    [el('td',null,r.when.slice(0,16).replace('T',' ')),stationCell(r),el('td',r.vehicle?'':'muted',r.vehicleNo||(r.vehicle?String(r.vehicle).split('_').pop():'none')),el('td','num',r.litres.toFixed(1)),fillCell(r),fleetCell(r),c].forEach(x=>tr.append(x));
     const dt=el('tr','d');dt.hidden=true;const td=el('td');td.colSpan=7;
     td.append(el('div',null,r.reason||''));
     if(r.drove)td.append(el('div',null,`Since the previous purchase (${r.drove.since.slice(0,10)}) the truck drove ${r.drove.km} km`+(r.drove.lPer100?`, which is ${r.drove.lPer100} L per 100 km for this purchase.`:'.')));
