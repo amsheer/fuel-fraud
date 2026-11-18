@@ -25,6 +25,9 @@ button:focus-visible,input:focus-visible,.chip:focus-visible,tr.r:focus-visible{
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 .tile{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;cursor:pointer;text-align:left;font:inherit;color:var(--ink)}
 .tile b{display:block;font-size:26px;line-height:1.1}.tile span{font-size:12px;color:var(--muted)}
+.about{background:#eef6f5;border:1px solid #c9e2de;border-radius:10px;padding:10px 14px;margin:0 0 12px;font-size:13px}.about b{display:block;margin-bottom:2px}
+details summary{cursor:pointer;font-weight:650;color:var(--teal)}details summary:focus-visible{outline:3px solid #ee994e}
+dl{margin:10px 0 0}dt{font-weight:650;margin-top:10px}dd{margin:2px 0 0;color:var(--muted);font-size:13px}
 .tile.on{outline:2px solid var(--teal)}
 .chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:650;white-space:nowrap}
 .supported{background:var(--greenp);color:var(--green)}.partly{background:#e4f4ef;color:#087f79}.notgeotab{background:#e6eef8;color:#2b5b9a}.untraceable{background:#fbf0dc;color:#9a661d;margin-left:6px}.quantity,.policy,.suspect{background:var(--redp);color:var(--red)}
@@ -60,6 +63,7 @@ tr.d td{background:#f8fbfa;font-size:13px}
   </div>
   <div id="err"></div>
   <div class="card" id="sumCard" hidden><h2>Result</h2><div class="tiles" id="tiles"></div><p class="note" id="sumNote" style="margin:12px 0 0"></p>
+    <details id="howAll" style="margin-top:14px"><summary>How each result is decided</summary><dl id="howList"></dl></details>
     <div id="shellOnly" hidden style="margin-top:14px"></div></div>
   <div class="card" id="rulesCard">
     <h2>Partner rules (sample values, saved in rules.json)</h2>
@@ -72,7 +76,7 @@ tr.d td{background:#f8fbfa;font-size:13px}
     </div>
     <div class="bar" style="margin-top:12px"><button class="ghost" id="saveRules">Save rules and check again</button></div>
   </div>
-  <div class="card"><h2 id="tblTitle">Purchases</h2><div class="scroll"><table id="tbl"><thead><tr><th>When (UTC)</th><th>Plate typed</th><th>Vehicle in Geotab</th><th>Found by</th><th>Station</th><th class="num">Litres</th><th>Result</th></tr></thead><tbody></tbody></table></div></div>
+  <div class="card"><h2 id="tblTitle">Purchases</h2><div id="about" class="about" hidden></div><div class="scroll"><table id="tbl"><thead><tr><th>When (UTC)</th><th>Plate typed</th><th>Vehicle in Geotab</th><th>Found by</th><th>Station</th><th class="num">Litres</th><th>Result</th></tr></thead><tbody></tbody></table></div></div>
 </main>
 <script src="config.js"></script>
 <script>
@@ -81,8 +85,22 @@ const ORDER=['suspect','quantity','policy','ambiguous','partly','notgeotab','uni
 const $=id=>document.getElementById(id);
 const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e};
 let data=null,filter=null;
+// Plain-English rule for every result. Numbers come from the settings in use (live server) or the sample's defaults.
+let SET={tol:{min_litres:50,percent:10},trace:{radius_m:300,window_min:15},cons:60};
+const EXPL=()=>{const g=SET.tol,m=SET.trace.radius_m,w=SET.trace.window_min;return{
+ supported:['Litres bought match the tank','The vehicle was found and Geotab saw its tank rise. Litres seen = tank level rise (percentage points) × the truck\'s tank size. It is a match when the gap to the litres bought is within the allowed gap: the larger of '+g.min_litres+' L or '+g.percent+'% of the purchase.'],
+ quantity:['Litres bought do not match the tank','The same calculation, but the gap is bigger than allowed and the truck\'s tank-level readings are steady. If the readings vary a lot between purchases, it is "Needs review" instead, because the gap is not conclusive.'],
+ policy:['Station breaks a partner rule','Checked first. The station is outside the partner\'s city boundary or not on the approved station list. Both rules are switched off in the sample.'],
+ suspect:['Vehicle was elsewhere','The card\'s truck was found, but its GPS at payment time was away from the station, and no other tracked truck was at the station. The engine on or off at payment time is added when Geotab has it.'],
+ ambiguous:['Evidence points two ways','Examples: another tracked truck was at the station instead; a truck with a fuel sensor was at the station but no refuel was recorded; a vehicle found only by place and time shows a litres gap; two trucks were at the station; or the tank readings are too uneven to judge the litres.'],
+ partly:['Vehicle was there, litres unconfirmed','The truck has no fuel-level data, but its GPS shows it stopped at the station (within '+m+' m, 5 km/h or less) within '+w+' minutes of payment. The litres cannot be confirmed.'],
+ notgeotab:['Plate is not a Geotab vehicle','The typed plate is a real UK registration that none of the '+(data&&data.devices||10)+' Geotab vehicles has. No card history or override links it to one, and it is not one character away from a Geotab plate (that would be a probable typo). Only the Shell side can be shown.'],
+ unidentified:['We cannot say which truck','The plate is blank, a placeholder such as TRUCK 1, a probable typo of a Geotab plate, or two or more vehicles were at the station. A single truck found only by place and time is a guess, so it is shown here, not as a match.'],
+ insufficient:['Not enough data to judge','A vehicle was found, but there is no way to judge the litres: Geotab saw no fill-up near the payment, the tank size is not known, or there was no GPS near the payment time.'],
+ untraceable:['Flag: nobody can be tied to the fuel','Added to purchases with no Geotab vehicle when the station position is known and no tracked truck was within '+m+' m of the station within '+w+' minutes of payment. Trucks that sent no GPS in that window cannot be ruled out, and the row says how many.']}};
+
 async function j(url,opt){const r=await fetch(url,opt),b=await r.json();if(!r.ok)throw new Error(b.error||('HTTP '+r.status));return b}
-async function loadRules(){const r=await j('/api/rules');$('cbOn').checked=r.city_boundary.enabled;$('cbKm').value=r.city_boundary.radius_km;$('asOn').checked=r.approved_stations.enabled;$('asCodes').value=r.approved_stations.site_codes.join(', ');$('trM').value=r.trace.radius_m;$('trMin').value=r.trace.window_min;$('tlMin').value=r.tolerance.min_litres;$('tlPct').value=r.tolerance.percent;$('coOn').checked=r.consumption.enabled;$('coMax').value=r.consumption.max_l_per_100km}
+async function loadRules(){const r=await j('/api/rules');SET={tol:r.tolerance,trace:r.trace,cons:r.consumption.max_l_per_100km};$('cbOn').checked=r.city_boundary.enabled;$('cbKm').value=r.city_boundary.radius_km;$('asOn').checked=r.approved_stations.enabled;$('asCodes').value=r.approved_stations.site_codes.join(', ');$('trM').value=r.trace.radius_m;$('trMin').value=r.trace.window_min;$('tlMin').value=r.tolerance.min_litres;$('tlPct').value=r.tolerance.percent;$('coOn').checked=r.consumption.enabled;$('coMax').value=r.consumption.max_l_per_100km}
 async function saveRules(){
   await j('/api/rules',{method:'PUT',body:JSON.stringify({city_boundary:{enabled:$('cbOn').checked,radius_km:+$('cbKm').value},approved_stations:{enabled:$('asOn').checked,site_codes:$('asCodes').value.split(',').map(s=>s.trim()).filter(Boolean)},trace:{radius_m:+$('trM').value,window_min:+$('trMin').value},tolerance:{min_litres:+$('tlMin').value,percent:+$('tlPct').value},consumption:{enabled:$('coOn').checked,max_l_per_100km:+$('coMax').value}})});
   return check();
@@ -119,9 +137,11 @@ async function check(){
 function render(){
   $('sumCard').hidden=false;
   const tiles=$('tiles');tiles.replaceChildren();
-  [...ORDER,'untraceable'].forEach(k=>{const n=k==='untraceable'?data.rows.filter(r=>r.untraceable).length:(data.counts[k]||0);const b=el('button','tile'+(filter===k?' on':''));b.append(el('b',null,n),el('span',null,LABEL[k]));b.onclick=()=>{filter=filter===k?null:k;render()};tiles.append(b)});
+  [...ORDER,'untraceable'].forEach(k=>{const n=k==='untraceable'?data.rows.filter(r=>r.untraceable).length:(data.counts[k]||0);const b=el('button','tile'+(filter===k?' on':''));b.append(el('b',null,n),el('span',null,LABEL[k]));b.title=LABEL[k]+': '+EXPL()[k][1];b.onclick=()=>{filter=filter===k?null:k;render()};tiles.append(b)});
   const rep=data.repeats.map(r=>`${r.plate||r.card} bought exactly ${r.litres} L ${r.times} times`).join('; ');
   $('sumNote').textContent=`${data.shellRows} Shell rows. ${data.mergedLines} split diesel lines added to their purchase, ${data.adblueSkipped} AdBlue line skipped (not fuel). ${data.devices} Geotab vehicles, ${data.devicesWithFills} with fill-up data. Litres bought but not seen going into the tank (Quantity exceptions only): ${data.unexplainedLitres} L.`+(rep?' Repeated purchases: '+rep+'.':'');
+  const X=EXPL(),ab=$('about');ab.hidden=!filter;ab.replaceChildren();if(filter)ab.append(el('b',null,LABEL[filter]+': '+X[filter][0]),el('span',null,X[filter][1]));
+  const hl=$('howList');hl.replaceChildren();[...ORDER,'untraceable'].forEach(k=>{hl.append(el('dt',null,LABEL[k]+' - '+X[k][0]),el('dd',null,X[k][1]))});
   // Vehicles that exist only in Shell: we are sure they are not Geotab vehicles, so only the Shell side can be shown
   const so=$('shellOnly'),g={};data.rows.filter(r=>r.outcome==='notgeotab').forEach(r=>{const x=g[r.plate]=g[r.plate]||{n:0,l:0,a:r.when,b:r.when,s:new Set(),c:new Set()};x.n++;x.l+=r.litres;if(r.when<x.a)x.a=r.when;if(r.when>x.b)x.b=r.when;x.s.add(r.siteCode);x.c.add(r.card)});
   so.replaceChildren();so.hidden=!Object.keys(g).length;
