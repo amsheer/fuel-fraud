@@ -57,9 +57,8 @@ async function run(from, to, rules) {
     const pts = await logPoints(jobs.map(j => ({ dev: j.dev, from: new Date(txs[j.i].utc - gpsWin).toISOString(), to: new Date(+txs[j.i].utc + gpsWin).toISOString() })));
     jobs.forEach((j, k) => { const t = txs[j.i]; presenceBy[j.i][j.dev] = L.presence(pts[k].filter(p => p.id), t.lat, t.lon, +t.utc, traceM / 1000); }); // id null = calculated edge point
   };
-  await fetchPresence(txs.flatMap((t, i) => t.lat == null ? [] : ownDev(t) ? [{ i, dev: ownDev(t).id }] : devices.map(d => ({ i, dev: d.id }))));
-  // card truck is not at the station: who else was?
-  await fetchPresence(txs.flatMap((t, i) => { const o = ownDev(t), P = o && presenceBy[i][o.id]; return P && !P.stoppedHere ? devices.filter(d => d.id !== o.id).map(d => ({ i, dev: d.id })) : []; }));
+  // every fleet truck for every purchase, so the table can show each truck's distance from the station
+  await fetchPresence(txs.flatMap((t, i) => t.lat == null ? [] : devices.map(d => ({ i, dev: d.id }))));
 
   const devById = Object.fromEntries(devices.map(d => [d.id, d]));
   // A Geotab fill-up is a PERIOD: it starts at the last low tank reading (dateTime) and ends when the level peaks
@@ -84,6 +83,19 @@ async function run(from, to, rules) {
     const atStation = devices.filter(d => (!dev || d.id !== dev.id) && pres[d.id] && pres[d.id].stoppedHere);
     const r = L.assess(t, { byPlate, cardMap, geoPlates, nearby: dev ? [] : atStation, atStation, presence: own, presenceOf: d => pres[d.id], hasSensor: d => !!fillsBy[d.id], distanceKm: own ? (own.payDistKm != null ? own.payDistKm : own.closestKm) : null, fillFor }, rules);
     r.coords = t.lat == null ? null : [t.lat, t.lon];
+    r.station = { name: t.SiteName || null, code: t.SiteCode, country: t.SiteCountry || null, lat: t.lat, lon: t.lon };
+    const plateOf = d => d.licensePlate || String(d.name).split('_').pop();
+    const mdev = r.vehicle ? devices.find(d => d.name === r.vehicle) : null;
+    r.vehicleNo = mdev ? plateOf(mdev) : null;
+    // distance of every fleet truck from the station: at payment time when known, else the closest GPS point in the window
+    r.fleet = t.lat == null ? [] : devices.map(d => {
+      const P = pres[d.id] || {}, atPay = P.posKnown;
+      return { vehicle: plateOf(d), km: atPay ? +P.payDistKm.toFixed(2) : P.closestKm != null ? +P.closestKm.toFixed(2) : null, atPay: !!atPay, stopped: !!P.stoppedHere, matched: !!mdev && d.id === mdev.id };
+    }).sort((a, b) => (a.km == null) - (b.km == null) || a.km - b.km);
+    // the Geotab fill-up matched to this purchase: when the tank started filling, when it peaked, level before and after
+    const fu = mdev && fillWin(mdev, t), fl = fu && fillFor(mdev, t);
+    r.fill = fu ? { start: fu.dateTime, peak: fu.tankLevelExtrema.maximaPoint.dateTime || null, from: +fu.tankLevelExtrema.minimaPoint.data.toFixed(0), to: +fu.tankLevelExtrema.maximaPoint.data.toFixed(0), litres: fl && fl.litres != null ? +fl.litres.toFixed(1) : null, cap: fl && fl.cap || null }
+      : { none: mdev ? (fillsBy[mdev.id] ? 'no fill-up recorded near this time' : 'no fuel-level data for this truck') : 'no vehicle matched' };
     r.odometerTyped = t.OdometerInput || null;
     r.signals = [];
     r.lines = t.lines; r.network = t.DelcoName + (t.IsShellSite ? '' : ' (not a Shell site)'); r.price = t.UnitPriceInTransactionCurrency;
